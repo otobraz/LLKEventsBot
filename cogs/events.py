@@ -3,34 +3,12 @@ from discord.ext import commands
 import sqlite3
 import asyncio
 import json
-from json.decoder import JSONDecodeError
-
-conn = sqlite3.connect("db/events.db")
-cursor = conn.cursor()
-
-cursor.execute("""CREATE TABLE IF NOT EXISTS events (
-             event_id STRING NOT NULL,
-             user_id STRING NOT NULL,
-             description STRING NOT NULL,
-             target STRING NOT NULL)
-             """)
 
 class Events(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
         self.timeout = 10
-        self.embed_id = self.data = None;
-        try:
-            with open('db/embed_id.json', 'r+') as f:
-                try:
-                    self.data = json.load(f)
-                    if self.data:
-                        self.embed_id = self.data['eventEmbed'][0]['id']
-                except:
-                    print(f'Error while opening the file')
-        except:
-            open('db/embed_id.json', 'w+')
 
     @commands.command(aliases=['add'])
     @commands.has_role(768529062159056977)
@@ -75,11 +53,11 @@ class Events(commands.Cog):
         role = await guild.create_role(name=activity_name)
 
         # SQLITE3
-        cursor.execute(
+        self.bot.cursor.execute(
             f'INSERT into events(event_id, user_id, description, target) values(?, ?, ?, ?)',
             (role.id, ctx.author.id, details, target)
         )
-        conn.commit()
+        self.bot.conn.commit()
 
         # JSON
         # self.events[activity_name] = {
@@ -100,13 +78,13 @@ class Events(commands.Cog):
         role = discord.utils.get(ctx.guild.roles,name=activity_name)
 
         # SQLITE
-        cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
-        event = cursor.fetchall()
+        self.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+        event = self.bot.cursor.fetchall()
         if event[0][1] == ctx.author.id:
             await role.delete()
-            cursor.execute('DELETE FROM events WHERE event_id = ?', (str(role.id),))
-            conn.commit()
-            await self.update_description(ctx.guild, self.embed_id)
+            self.bot.cursor.execute('DELETE FROM events WHERE event_id = ?', (str(role.id),))
+            self.bot.conn.commit()
+            await self.update_description(ctx.guild, self.bot.embed_id)
             await ctx.send(f'The event `{role.name}` was delete with success')
         else:
             await ctx.send(f'You can only delete events you have created')
@@ -127,7 +105,7 @@ class Events(commands.Cog):
     @commands.has_role(768529062159056977)
     async def create_embed(self, ctx):
         embed = discord.Embed(title="LLK Events")
-        events = cursor.execute('SELECT * FROM events').fetchall()
+        events = self.bot.cursor.execute('SELECT * FROM events').fetchall()
         description = ''
 
         # SQLITE3
@@ -149,18 +127,18 @@ class Events(commands.Cog):
 
         embed.description = description
         sent = await ctx.send(embed=embed)
-        self.embed_id = sent.id
-        self.data = {"eventEmbed":[{"id": self.embed_id}]};
+        self.bot.embed_id = sent.id
+        self.bot.embed_data = {"eventEmbed":{"id": self.bot.embed_id}};
         with open('db/embed_id.json', 'w') as f:
-            json.dump(self.data,f)
+            json.dump(self.bot.embed_data,f)
 
 
     @commands.command(aliases=['addRole'])
     async def add_role(self, ctx, *, role):
         role = discord.utils.get(ctx.guild.roles,name=role)
         if role:
-            cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
-            event = cursor.fetchall()
+            self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+            event = self.bot.cursor.fetchall()
             if event:
                 await ctx.author.add_roles(role)
                 await ctx.send(f'Role added')
@@ -173,8 +151,8 @@ class Events(commands.Cog):
     async def remove_role(self, ctx, *, role):
         role = discord.utils.get(ctx.guild.roles,name=role)
         if role:
-            cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
-            event = cursor.fetchall()
+            self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+            event = self.bot.cursor.fetchall()
             if event:
                 await ctx.author.remove_roles(role)
                 await ctx.send(f'Role removed')
@@ -186,8 +164,8 @@ class Events(commands.Cog):
     async def update_description(ctx, guild, msgID):
         if not msgID:
             return;
-        cursor.execute('SELECT * FROM events')
-        events = cursor.fetchall()
+        self.bot.cursor.execute('SELECT * FROM events')
+        events = self.bot.cursor.fetchall()
         description = ''
         for e in events:
             # print(f'{e}\n\n')

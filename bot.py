@@ -15,6 +15,8 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 PREFIX = os.getenv('BOT_PREFIX')
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 class LLKEventsBot(Bot):
 
     def __init__(self):
@@ -22,7 +24,7 @@ class LLKEventsBot(Bot):
 
         print('Loading embed data...')
         try:
-            with open('db/embed_id.json', 'r+') as f:
+            with open(f'{dir_path}/db/embed_id.json', 'r+') as f:
                 try:
                     self.embed_data = json.load(f)
                     if self.embed_data:
@@ -30,7 +32,7 @@ class LLKEventsBot(Bot):
                 except Exception as e:
                     print(f'{e}')
         except:
-            open('db/embed_id.json', 'w+')
+            open(f'{dir_path}/db/embed_id.json', 'w+')
 
         print('Loading permissions data...')
         try:
@@ -42,10 +44,10 @@ class LLKEventsBot(Bot):
                 except Exception as e:
                     print(f'{e}')
         except:
-            open('db/roles.json', 'w+')
+            open(f'{dir_path}/db/roles.json', 'w+')
 
         print('Loading roles DB...')
-        self.conn = sqlite3.connect("db/events.db")
+        self.conn = sqlite3.connect(f'{dir_path}/db/events.db')
         self.cursor = self.conn.cursor()
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS events (

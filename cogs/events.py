@@ -45,12 +45,13 @@ class Events(commands.Cog):
             await ctx.send('Cancelling requent...', delete_after=int(self.timeout))
             return
 
-        embed = discord.Embed(title=activity_name)
-        # embed.add_field(name='Description', value = f'{description}',inline=False)
-        # embed.add_field(name='Target', value = f'{target}',inline=False)
-        embed.description = f'**Host:** {ctx.author.mention} \n **Description:** {details} \n **Target:** {target}\n\n'
-        await ctx.send(embed=embed)
-        role = await guild.create_role(name=activity_name)
+        # EVENT EMBED
+        # embed = discord.Embed(title=activity_name)
+        # # embed.add_field(name='Description', value = f'{description}',inline=False)
+        # # embed.add_field(name='Target', value = f'{target}',inline=False)
+        # embed.description = f'**Host:** {ctx.author.mention} \n **Description:** {details} \n **Target:** {target}\n\n'
+        # await ctx.send(embed=embed)
+        # role = await guild.create_role(name=activity_name)
 
         # SQLITE3
         self.bot.cursor.execute(
@@ -69,7 +70,7 @@ class Events(commands.Cog):
         # with open('db/_events.json', 'w') as f:
         #     json.dump(self.events,f)
 
-        await self.update_description(guild, self.embed_id)
+        await self.update_description(self, guild, self.bot.embed_id)
         await ctx.send(f'The event `{role.name}` was created with success')
 
     @commands.command(aliases=['del'])
@@ -78,13 +79,13 @@ class Events(commands.Cog):
         role = discord.utils.get(ctx.guild.roles,name=activity_name)
 
         # SQLITE
-        self.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+        self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
         event = self.bot.cursor.fetchall()
         if event[0][1] == ctx.author.id:
             await role.delete()
             self.bot.cursor.execute('DELETE FROM events WHERE event_id = ?', (str(role.id),))
             self.bot.conn.commit()
-            await self.update_description(ctx.guild, self.bot.embed_id)
+            await self.update_description(self, ctx.guild, self.bot.embed_id)
             await ctx.send(f'The event `{role.name}` was delete with success')
         else:
             await ctx.send(f'You can only delete events you have created')
@@ -161,7 +162,7 @@ class Events(commands.Cog):
         else:
             await ctx.send(f'The given role doesn\'t exist')
 
-    async def update_description(ctx, guild, msgID):
+    async def update_description(self, ctx, guild, msgID):
         if not msgID:
             return;
         self.bot.cursor.execute('SELECT * FROM events')

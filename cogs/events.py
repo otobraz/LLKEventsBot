@@ -15,7 +15,7 @@ class Events(commands.Cog):
     async def add_activity(self, ctx,*, activity_name):
         guild = ctx.guild
         sent = await ctx.send('Briefly describe the event: ')
-        details = ''
+        # details = ''
         try:
             message = await self.bot.wait_for(
                 'message', timeout=int(self.timeout),
@@ -31,7 +31,7 @@ class Events(commands.Cog):
             return
 
         sent = await ctx.send('Target: ')
-        target = ''
+        # target = ''
         try:
             message = await self.bot.wait_for(
                 'message', timeout=int(self.timeout),
@@ -51,7 +51,8 @@ class Events(commands.Cog):
         # # embed.add_field(name='Target', value = f'{target}',inline=False)
         # embed.description = f'**Host:** {ctx.author.mention} \n **Description:** {details} \n **Target:** {target}\n\n'
         # await ctx.send(embed=embed)
-        # role = await guild.create_role(name=activity_name)
+
+        role = await guild.create_role(name=activity_name)
 
         # SQLITE3
         self.bot.cursor.execute(
@@ -68,7 +69,7 @@ class Events(commands.Cog):
         #     'target': target
         # }
         # with open('db/_events.json', 'w') as f:
-        #     json.dump(self.events,f)
+        #     json.dump(self.events, f, indent=4)
 
         await self.update_description(self, guild, self.bot.embed_id)
         await ctx.send(f'The event `{role.name}` was created with success')
@@ -105,16 +106,15 @@ class Events(commands.Cog):
     @commands.command(aliases=['emb'])
     @commands.has_role(768529062159056977)
     async def create_embed(self, ctx):
-        embed = discord.Embed(title="LLK Events")
+        embed = discord.Embed(title='LLK Events', description='')
         events = self.bot.cursor.execute('SELECT * FROM events').fetchall()
-        description = ''
 
         # SQLITE3
         for e in events:
             event = ctx.guild.get_role(int(e[0]))
             host = ctx.guild.get_member(int(e[1]))
             # embed.add_field(name=f'Event: {event.name}', value = f'Description: Event hosted by {host.mention}')
-            description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
+            embed.description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
             # # i++;
 
         # # JSON
@@ -124,14 +124,13 @@ class Events(commands.Cog):
         #     description += f"**Event:** {k} \n **Host:** {host.mention} \n **Description:** {v['description']}\n **Target:** {v['target']} \n\n"
         # self.data['eventEmbed']['id'] = self.embed_id
         # with open('db/_config.json', 'w') as f:
-        #     json.dump(self.data,f)
+        #     json.dump(self.data, f, indent=4)
 
-        embed.description = description
         sent = await ctx.send(embed=embed)
         self.bot.embed_id = sent.id
-        self.bot.embed_data = {"eventEmbed":{"id": self.bot.embed_id}};
+        self.bot.embed_data = {"eventEmbed":{"id": self.bot.embed_id}}
         with open('db/embed_id.json', 'w') as f:
-            json.dump(self.bot.embed_data,f)
+            json.dump(self.bot.embed_data, f, indent=4)
 
 
     @commands.command(aliases=['addRole'])
@@ -167,19 +166,17 @@ class Events(commands.Cog):
             return;
         self.bot.cursor.execute('SELECT * FROM events')
         events = self.bot.cursor.fetchall()
-        description = ''
         for e in events:
             # print(f'{e}\n\n')
             event = guild.get_role(int(e[0]))
             host = guild.get_member(int(e[1]))
             # embed.add_field(name=f'Event: {event.name}', value = f'Description: Event hosted by {host.mention}'
-            description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
+            embed.description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
             # i++;
 
         textChannel = discord.utils.get(guild.text_channels, name='bot')
         message = await textChannel.fetch_message(msgID)
         embed = message.embeds[0]
-        embed.description = description
         await message.edit(embed=embed)
 
 

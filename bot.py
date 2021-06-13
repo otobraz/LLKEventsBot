@@ -29,10 +29,18 @@ class LLKEventsBot(Bot):
                     self.embed_data = json.load(f)
                     if self.embed_data:
                         self.embed_id = self.embed_data['eventEmbed']['id']
-                except Exception as e:
-                    print(f'{e}')
+                except:
+                    self.embed_data = {"eventEmbed":{
+                        "id": None                    }}
+                    self.embed_id = self.embed_data['eventEmbed']['id']
+                    json.dump(self.embed_data, f, indent=4)
         except:
-            open(f'{dir_path}/db/embed_id.json', 'w+')
+            with open(f'{dir_path}/db/embed_id.json', 'w+'):
+                self.embed_data = {"eventEmbed":{
+                    "id": self.bot.embed_id
+                }}
+                self.embed_id = self.embed_data['eventEmbed']['id']
+                json.dump(self.embed_data, f, indent=4)
 
         print('Loading permissions data...')
         try:
@@ -44,7 +52,14 @@ class LLKEventsBot(Bot):
                 except Exception as e:
                     print(f'{e}')
         except:
-            open(f'{dir_path}/db/roles.json', 'w+')
+            with open(f'{dir_path}/db/roles.json', 'w+') as f:
+                self.perms_data = {"permissions":{
+                    "admins": [],
+                    "mods": [],
+                    "hosts": []
+                }}
+                self.perms = self.perms_data['permissions']
+                json.dump(self.perms_data, f, indent=4)
 
         print('Loading roles DB...')
         self.conn = sqlite3.connect(f'{dir_path}/db/events.db')

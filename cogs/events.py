@@ -8,17 +8,15 @@ class Events(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.timeout = 10
 
     @commands.command(aliases=['add'])
     @commands.has_role(768529062159056977)
     async def add_activity(self, ctx,*, activity_name):
         guild = ctx.guild
         sent = await ctx.send('Briefly describe the event: ')
-        # details = ''
         try:
             message = await self.bot.wait_for(
-                'message', timeout=int(self.timeout),
+                'message', timeout=180,
                 check=lambda m: m.author == ctx.author and m.channel == ctx.channel
             )
             if message:
@@ -27,14 +25,13 @@ class Events(commands.Cog):
                 await message.delete()
         except asyncio.TimeoutError:
             await sent.delete()
-            await ctx.send('Cancelling requent...', delete_after=int(self.timeout))
+            await ctx.send('Cancelling request...', delete_after=3)
             return
 
-        sent = await ctx.send('Target: ')
-        # target = ''
+        sent = await ctx.send('What\'s the target level: ')
         try:
             message = await self.bot.wait_for(
-                'message', timeout=int(self.timeout),
+                'message', timeout=60,
                 check=lambda m: m.author == ctx.author and m.channel == ctx.channel
             )
             target = message.content
@@ -42,7 +39,7 @@ class Events(commands.Cog):
             await message.delete()
         except asyncio.TimeoutError:
             await sent.delete()
-            await ctx.send('Cancelling requent...', delete_after=int(self.timeout))
+            await ctx.send('Cancelling request...', delete_after=3)
             return
 
         # EVENT EMBED
@@ -106,7 +103,12 @@ class Events(commands.Cog):
     @commands.command(aliases=['emb'])
     @commands.has_role(768529062159056977)
     async def create_embed(self, ctx):
-        embed = discord.Embed(title='LLK Events', description='')
+        embed = discord.Embed(
+            title='LLK Events',
+            description=f'''
+                *Use **{self.bot.command_prefix}<event_name>** so you get notifications pertaining to <event_name>.*\n
+            '''
+        )
         events = self.bot.cursor.execute('SELECT * FROM events').fetchall()
 
         # SQLITE3
@@ -114,7 +116,7 @@ class Events(commands.Cog):
             event = ctx.guild.get_role(int(e[0]))
             host = ctx.guild.get_member(int(e[1]))
             # embed.add_field(name=f'Event: {event.name}', value = f'Description: Event hosted by {host.mention}')
-            embed.description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
+            embed.description += f'{event.mention}({e[3]}) hosted by {host.mention} \n ```{e[2]}``` \n'
             # # i++;
 
         # # JSON
@@ -163,7 +165,12 @@ class Events(commands.Cog):
 
     async def update_description(self, ctx, guild, msgID):
         if not msgID:
-            return;
+            return
+        message = await discord.utils.get(guild.text_channels, name='bot').fetch_message(msgID)
+        embed = message.embeds[0]
+        embed.description=f'''
+            *Use **{self.bot.command_prefix}<event_name>** so you get notifications pertaining to <event_name>.*\n
+        '''
         self.bot.cursor.execute('SELECT * FROM events')
         events = self.bot.cursor.fetchall()
         for e in events:
@@ -171,12 +178,9 @@ class Events(commands.Cog):
             event = guild.get_role(int(e[0]))
             host = guild.get_member(int(e[1]))
             # embed.add_field(name=f'Event: {event.name}', value = f'Description: Event hosted by {host.mention}'
-            embed.description += f'**Event:** {event.name} \n **Host:** {host.mention} \n **Description:** {e[2]}\n **Target:** {e[3]} \n\n'
+            embed.description += f'{event.mention}({e[3]}) hosted by {host.mention} \n ```{e[2]}``` \n'
             # i++;
 
-        textChannel = discord.utils.get(guild.text_channels, name='bot')
-        message = await textChannel.fetch_message(msgID)
-        embed = message.embeds[0]
         await message.edit(embed=embed)
 
 

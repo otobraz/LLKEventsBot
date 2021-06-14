@@ -5,12 +5,8 @@ import json
 
 class Moderation(commands.Cog):
 
-    # data = modRoles = hostRoles = adminRoles = []
-    #
     def __init__(self, bot):
         self.bot = bot
-        # adminRoles = [768529062159056977]
-        # print(*(adminRoles+modRoles))
 
     # Sets a role as an adminr role
     @commands.command(aliases=['setadminrole', 'sar'])

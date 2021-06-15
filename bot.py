@@ -1,11 +1,17 @@
 # bot.py
 import os
-import discord
 import sqlite3
 import json
+
+import datetime
+
 from dotenv import load_dotenv
+
+import discord
 from discord.ext import commands
 from discord.ext.commands import Bot
+
+from cogs.utils import helper as h
 
 intents = discord.Intents.default()
 intents.members = True
@@ -17,12 +23,19 @@ PREFIX = os.getenv('BOT_PREFIX')
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
+extensions = ['cogs.general', 'cogs.events', 'cogs.moderation']
+
 class LLKEventsBot(Bot):
 
     def __init__(self):
-        super().__init__(description="Bot created by Oto#2494", command_prefix=PREFIX, owner_id=271992863175344130,intents=intents)
-
-        print('Loading embed data...')
+        super().__init__(
+            description="Bot created by Oto#2494",
+            command_prefix=PREFIX,
+            owner_id=271992863175344130,
+            intents=intents,
+            help_command=None
+        )
+        print('\nLoading embed data...')
         try:
             with open(f'{dir_path}/db/embed_id.json', 'r+') as f:
                 try:
@@ -88,8 +101,45 @@ class LLKEventsBot(Bot):
     async def on_ready(self):
         if not os.path.exists('db'):
             os.makedirs('db')
-        bot.load_extension('cogs.events')
-        bot.load_extension('cogs.moderation')
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+
+        print('\nLoading extensions...')
+        for extension in extensions:
+            print(f'Loading {extension}')
+            bot.load_extension(extension)
+
+        await bot.change_presence(activity=discord.Game(f'{PREFIX}help'))
+
+        print(f'\nLogged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
+
+    # async def on_message(self, msg):
+    #     if msg.author.bot:
+    #         return
+
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, commands.BotMissingPermissions):
+            await ctx.send(f'I have no permission to do that')
+            return
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.send(f'You have no permission to use this command')
+            return
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f'You forgot to inform the following parameter: {error.param}')
+        else:
+            d = datetime.datetime.now()
+            with open(f'logs/{d.year}-{d.month}-{d.day}.log', 'a', encoding='utf8') as f:
+                # f.write(f'''-------------\n{d.hour}:{d.minute}:{d.second}.{d.microsecond}\n{type(error)}\n{error}\n-------------\n\n'''')
+                f.write(
+                    '-------------\n'
+                    f'{d.hour}:{d.minute}:{d.second}.{d.microsecond}\n'
+                    f'Command: {ctx.message.content}\n'
+                    f'Author: {ctx.author}\n'
+                    f'Exception: {type(error)}\n'
+                    f'Description: {error}\n'
+                    '-------------\n\n'
+                )
+            return
 
 
 bot = LLKEventsBot()

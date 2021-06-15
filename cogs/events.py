@@ -1,8 +1,12 @@
 import discord
 from discord.ext import commands
+
 import sqlite3
-import asyncio
 import json
+
+import asyncio
+
+from .utils import helper as h
 
 class Events(commands.Cog):
 
@@ -10,8 +14,11 @@ class Events(commands.Cog):
         self.bot = bot
 
     @commands.command(aliases=['add'])
-    @commands.has_role(768529062159056977)
+    @commands.check_any(h.admin_check(), h.mod_check(), h.host_check())
     async def add_activity(self, ctx,*, activity_name):
+        '''*Creates a new event. You will be prompted to inform a brief description of the event and proficiency level it is aimed at.*
+
+        Example: `!add_activity Speaking Practice`'''
         guild = ctx.guild
         sent = await ctx.send('Briefly describe the event: ')
         try:
@@ -72,8 +79,11 @@ class Events(commands.Cog):
         await ctx.send(f'The event `{role.name}` was created with success')
 
     @commands.command(aliases=['del'])
-    @commands.has_role(768529062159056977)
+    @commands.check_any(h.admin_check(), h.mod_check(), h.host_check())
     async def del_activity(self, ctx, *, activity_name):
+        '''*Removes an event. You can only remove an event you have created.*
+
+        Example: `!del_activity Speaking Practice`'''
         role = discord.utils.get(ctx.guild.roles,name=activity_name)
 
         # SQLITE
@@ -101,12 +111,16 @@ class Events(commands.Cog):
         #     await ctx.send(f'You can only delete events you have created')
 
     @commands.command(aliases=['emb'])
-    @commands.has_role(768529062159056977)
-    async def create_embed(self, ctx):
-        embed = discord.Embed(
+    @commands.check_any(h.admin_check() or h.mod_check())
+    async def create_embed(self, ctx, channel=None):
+        '''*Posts embed with list of ongoing activities in the channel informed.*
+
+        Example: `create_embed #channel`
+        '''
+        embed = h.red_embed(
             title='LLK Events',
             description=f'''
-                *Use **{self.bot.command_prefix}<event_name>** so you get notifications pertaining to <event_name>.*\n
+                *Use **{self.bot.command_prefix}nt<event_name>** to toggle whether you want to receive notifications pertaining to <event_name>.*\n
             '''
         )
         events = self.bot.cursor.execute('SELECT * FROM events').fetchall()
@@ -127,41 +141,41 @@ class Events(commands.Cog):
         # self.data['eventEmbed']['id'] = self.embed_id
         # with open('db/_config.json', 'w') as f:
         #     json.dump(self.data, f, indent=4)
-
-        sent = await ctx.send(embed=embed)
+        if channel:
+            sent = await discord.utils.get(ctx.guild.text_channels,mention=channel).send(embed=embed)
+        else:
+            sent = await ctx.send(embed=embed)
         self.bot.embed_id = sent.id
         self.bot.embed_data = {"eventEmbed":{"id": self.bot.embed_id}}
         with open('db/embed_id.json', 'w') as f:
             json.dump(self.bot.embed_data, f, indent=4)
 
+    @commands.command(aliases=['notifyme', 'notify', 'ntf', 'nt'], case_insensitive=True)
+    @commands.bot_has_permissions(manage_roles=True)
+    async def notify_me(self, ctx, *, role):
+        '''Toggles event role so members get notifications about the events
 
-    @commands.command(aliases=['addRole'])
-    async def add_role(self, ctx, *, role):
+        Example: `notify_me Speaking Practice`
+        '''
         role = discord.utils.get(ctx.guild.roles,name=role)
-        if role:
-            self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
-            event = self.bot.cursor.fetchall()
-            if event:
-                await ctx.author.add_roles(role)
-                await ctx.send(f'Role added')
-            else:
-                await ctx.send(f'You have no permission to add this role')
+        self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+        if self.bot.cursor.fetchall():
+            try:
+                if role in ctx.author.roles:
+                    await ctx.author.remove_roles(role)
+                    await ctx.send(f'{ctx.author.mention}, you won\'t get notifications about {role.name} anymore')
+                else:
+                    await ctx.author.add_roles(role)
+                    await ctx.send(f'{ctx.author.mention}, you will get notifications about {role.name} from now on')
+            except discord.errors.Forbidden:
+                await ctx.send(embed = h.blue_embed(
+                    'Oops...',
+                    f'''
+                        I have permission to `Manage Roles`, but it seems {role.mention} is above my highest role.
+                    '''
+                ))
         else:
-            await ctx.send(f'The given role doesn\'t exist')
-
-    @commands.command(aliases=['removeRole'])
-    async def remove_role(self, ctx, *, role):
-        role = discord.utils.get(ctx.guild.roles,name=role)
-        if role:
-            self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
-            event = self.bot.cursor.fetchall()
-            if event:
-                await ctx.author.remove_roles(role)
-                await ctx.send(f'Role removed')
-            else:
-                await ctx.send(f'You have no permission to remove this role')
-        else:
-            await ctx.send(f'The given role doesn\'t exist')
+            await ctx.send(f'The given event doesn\'t exist')
 
     async def update_description(self, ctx, guild, msgID):
         if not msgID:
@@ -183,6 +197,33 @@ class Events(commands.Cog):
 
         await message.edit(embed=embed)
 
+    # @commands.command(aliases=['addrole'], case_insensitive=True)
+    # async def add_role(self, ctx, *, role):
+    #     role = discord.utils.get(ctx.guild.roles,name=role)
+    #     if role:
+    #         self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+    #         event = self.bot.cursor.fetchall()
+    #         if event:
+    #             await ctx.author.add_roles(role)
+    #             await ctx.send(f'Role added')
+    #         # else:
+    #         #     await ctx.send(f'You have no permission to add this role')
+    #     else:
+    #         await ctx.send(f'The given role doesn\'t exist')
+    #
+    # @commands.command(aliases=['removerole'])
+    # async def remove_role(self, ctx, *, role):
+    #     role = discord.utils.get(ctx.guild.roles,name=role)
+    #     if role:
+    #         self.bot.cursor.execute('SELECT * FROM events WHERE event_id = ?', (str(role.id),))
+    #         event = self.bot.cursor.fetchall()
+    #         if event:
+    #             await ctx.author.remove_roles(role)
+    #             await ctx.send(f'Role removed')
+    #         # else:
+    #         #     await ctx.send(f'You have no permission to remove this role')
+    #     else:
+    #         await ctx.send(f'The given role doesn\'t exist')
 
 def setup(bot):
     bot.add_cog(Events(bot))

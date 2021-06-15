@@ -139,6 +139,7 @@ class LLKEventsBot(Bot):
                     f'Description: {error}\n'
                     '-------------\n\n'
                 )
+            await ctx.send(f'It seems something went wrong:```{error}```')
             return
 
 
